@@ -84,11 +84,11 @@ async def send_telegram_notification(water_level, timestamp):
     
     try:
         date_time = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        message = f"⚠️ *Low Water Level Alert!*\n\n"
-        message += f"Water level is critically low: *{water_level} mm*\n"
+        message = f"⚠️ *Halo! Hydro domaga się wody!*\n\n"
+        message += f"Aktualny poziom: *{water_level} mm*\n"
         message += f"Threshold: {WATER_LEVEL_THRESHOLD} mm\n"
-        message += f"Time: {date_time}\n\n"
-        message += f"Please check the water tank!"
+        message += f"Czas: {date_time}\n\n"
+        message += f"Dolej wody, bo biedne roślinki umrą ☠️!"
         
         await telegram_bot.send_message(
             chat_id=TELEGRAM_CHAT_ID,
