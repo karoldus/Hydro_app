@@ -1,6 +1,15 @@
 # Measurement API and Dashboard
 
-A Flask application for receiving sensor measurements via API and displaying them in real-time on a web dashboard.
+A Flask application for receiving sensor measurements via API and displaying them in real-time on a web dashboard. Includes Telegram notifications for low water level alerts.
+
+## Features
+
+- Real-time dashboard updates using WebSocket
+- Automatic CSV file generation
+- Clean, responsive web interface
+- Connection status indicator
+- Displays latest measurement data
+- **Telegram notifications when water level is low (≤20mm)**
 
 ## Project Structure
 
@@ -11,6 +20,9 @@ measurement-app/
 ├── requirements.txt       # Python dependencies
 ├── test_script.py        # Test script for sending measurements
 ├── README.md             # This file
+├── TELEGRAM_SETUP.md     # Telegram bot setup guide
+├── .env.example          # Example environment variables
+├── .gitignore           # Git ignore file
 │
 ├── data/                 # CSV data files (created automatically)
 │   └── measurements_*.csv
@@ -81,8 +93,28 @@ Send measurement data in JSON format:
 Use the provided `test_script.py` to send sample measurements:
 
 ```bash
+# Normal water level (50mm)
 python test_script.py
+
+# Low water level (15mm) - triggers Telegram notification
+python test_script.py --low-water
 ```
+
+## Telegram Notifications
+
+The app can send Telegram notifications when water level drops to 20mm or below.
+
+### Quick Setup
+
+1. Create a bot with @BotFather on Telegram
+2. Get your bot token and chat ID
+3. Set environment variables:
+   ```bash
+   export TELEGRAM_BOT_TOKEN="your_bot_token"
+   export TELEGRAM_CHAT_ID="your_chat_id"
+   ```
+
+See `TELEGRAM_SETUP.md` for detailed instructions.
 
 ## Data Storage
 
@@ -98,3 +130,5 @@ python test_script.py
 - Clean, responsive web interface
 - Connection status indicator
 - Displays latest measurement data
+- Visual water level status indicator
+- Telegram notifications when water level is low (≤20mm)

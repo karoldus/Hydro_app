@@ -1,4 +1,5 @@
 const socket = io();
+const WATER_LEVEL_THRESHOLD = 20;
 
 socket.on('connect', function () {
     document.getElementById('status').className = 'status connected';
@@ -24,6 +25,9 @@ function updateDisplay(measurement) {
         return;
     }
 
+    const waterLevel = measurement.data.water_level;
+    const isLowLevel = waterLevel <= WATER_LEVEL_THRESHOLD;
+
     const content = `
         <div class="timestamp">
             <strong>Last Update:</strong> ${formatTimestamp(measurement.timestamp)}
@@ -31,8 +35,10 @@ function updateDisplay(measurement) {
         
         <div class="section">
             <h2>Water Level</h2>
-            <div class="value">
-                <strong>Level:</strong> ${measurement.data.water_level} mm
+            <div class="water-level-status ${isLowLevel ? 'water-level-critical' : 'water-level-normal'}">
+                ${isLowLevel ? '⚠️ CRITICAL - LOW WATER LEVEL' : '✅ Normal Water Level'}
+                <div class="water-level-value">${waterLevel} mm</div>
+                ${isLowLevel ? `<small>Threshold: ${WATER_LEVEL_THRESHOLD} mm</small>` : ''}
             </div>
         </div>
         
