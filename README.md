@@ -59,7 +59,6 @@ Send measurement data in JSON format:
 
 ```json
 {
-    "timestamp": 123456789,
     "data": {
         "water_level": 50,
         "inside": {
