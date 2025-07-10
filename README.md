@@ -12,6 +12,9 @@ measurement-app/
 ├── test_script.py        # Test script for sending measurements
 ├── README.md             # This file
 │
+├── data/                 # CSV data files (created automatically)
+│   └── measurements_*.csv
+│
 ├── templates/            # HTML templates
 │   └── index.html        # Dashboard page
 │
@@ -85,7 +88,8 @@ python test_script.py
 
 - Measurements are saved to CSV files automatically
 - One file per day: `measurements_YYYY-MM-DD.csv`
-- Files are created in the application directory
+- Files are created in the `data/` directory
+- The data directory is created automatically if it doesn't exist
 
 ## Features
 

@@ -18,8 +18,8 @@ def save_to_csv(measurement):
     timestamp = measurement['timestamp']
     date = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
     
-    # Create filename with date
-    filename = f'measurements_{date}.csv'
+    # Create filename with date in data directory
+    filename = os.path.join('data', f'measurements_{date}.csv')
     
     # Extract data
     data = measurement['data']
@@ -98,6 +98,7 @@ def handle_request_latest():
 
 if __name__ == '__main__':
     # Create necessary directories if they don't exist
+    os.makedirs('data', exist_ok=True)
     os.makedirs('templates', exist_ok=True)
     os.makedirs('static/css', exist_ok=True)
     os.makedirs('static/js', exist_ok=True)
