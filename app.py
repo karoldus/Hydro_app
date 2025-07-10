@@ -116,8 +116,11 @@ def measurement():
         measurement_data = request.get_json()
         
         # Validate required fields
-        if not measurement_data or 'timestamp' not in measurement_data or 'data' not in measurement_data:
+        if not measurement_data or 'data' not in measurement_data:
             return jsonify({'error': 'Invalid data format'}), 400
+        
+        # get current timestamp
+        measurement_data['timestamp'] = int(datetime.now().timestamp())
         
         # Save to CSV
         save_to_csv(measurement_data)
