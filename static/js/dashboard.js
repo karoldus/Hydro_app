@@ -1,5 +1,7 @@
 const socket = io();
 const WATER_LEVEL_THRESHOLD = 20;
+let lastNotificationTime = 0;
+const NOTIFICATION_COOLDOWN = 300; // 5 minutes in seconds
 
 socket.on('connect', function () {
     document.getElementById('status').className = 'status connected';
@@ -27,6 +29,12 @@ function updateDisplay(measurement) {
 
     const waterLevel = measurement.data.water_level;
     const isLowLevel = waterLevel <= WATER_LEVEL_THRESHOLD;
+    const currentTime = Date.now() / 1000;
+
+    // Update last notification time if water is low
+    if (isLowLevel && currentTime - lastNotificationTime >= NOTIFICATION_COOLDOWN) {
+        lastNotificationTime = currentTime;
+    }
 
     const content = `
         <div class="timestamp">
@@ -39,6 +47,7 @@ function updateDisplay(measurement) {
                 ${isLowLevel ? '⚠️ CRITICAL - LOW WATER LEVEL' : '✅ Normal Water Level'}
                 <div class="water-level-value">${waterLevel} mm</div>
                 ${isLowLevel ? `<small>Threshold: ${WATER_LEVEL_THRESHOLD} mm</small>` : ''}
+                ${isLowLevel && lastNotificationTime > 0 ? `<small>Telegram notification sent</small>` : ''}
             </div>
         </div>
         

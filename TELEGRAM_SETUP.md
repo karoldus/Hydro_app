@@ -95,25 +95,38 @@ The default threshold is 20mm. To change it:
    export WATER_LEVEL_THRESHOLD=30
    ```
 
-2. Or modify in `app.py`:
-   ```python
-   WATER_LEVEL_THRESHOLD = 30
+2. Or add to your `.env` file:
    ```
+   WATER_LEVEL_THRESHOLD=30
+   ```
+
+### Notification Rate Limiting
+
+To prevent notification spam, you can implement rate limiting by creating a `config.py` file (see the optional config.py artifact) which includes cooldown periods between notifications.
 
 ## Troubleshooting
 
-### Bot not sending messages?
+### Common Errors and Solutions
 
+#### 1. "Event loop is closed" Error
+**Problem**: This error occurred in the old async implementation.
+**Solution**: The app now uses synchronous requests with threading, which should eliminate this error.
+
+#### 2. "Pool timeout: All connections in the connection pool are occupied"
+**Problem**: Too many simultaneous connections to Telegram.
+**Solution**: The app now uses simple HTTP requests with proper timeouts and threading.
+
+#### 3. "Telegram bot not configured" message
+This means either:
+- `TELEGRAM_BOT_TOKEN` is not set or is still the placeholder value
+- `TELEGRAM_CHAT_ID` is not set or is still the placeholder value
+
+#### 4. Bot not sending messages?
 1. Check if the bot token is correct
 2. Verify the chat ID is correct
 3. Make sure you've started a conversation with your bot
 4. Check the console output for error messages
-
-### "Telegram bot not configured" message?
-
-This means either:
-- `TELEGRAM_BOT_TOKEN` is not set or is still the placeholder value
-- `TELEGRAM_CHAT_ID` is not set or is still the placeholder value
+5. Check your internet connection
 
 ### Test your bot manually:
 
@@ -124,9 +137,26 @@ curl -X POST "https://api.telegram.org/botYOUR_BOT_TOKEN/sendMessage" \
      -d '{"chat_id": "YOUR_CHAT_ID", "text": "Test message"}'
 ```
 
+### Check logs:
+The application now uses proper logging. Look for messages like:
+- `Telegram notification sent successfully: Water level 15mm`
+- `Failed to send Telegram notification. Status code: ...`
+- `Telegram notification timed out after 10 seconds`
+
+## Performance Optimization
+
+### For High-Volume Deployments
+
+If you're sending many measurements:
+
+1. **Implement rate limiting**: Use the optional `config.py` to add cooldown periods
+2. **Batch notifications**: Modify the code to group multiple alerts
+3. **Use a message queue**: For production deployments, consider using Celery or similar
+
 ## Security Notes
 
 - **Never commit** your bot token or chat ID to version control
 - Use environment variables or `.env` files
 - Add `.env` to your `.gitignore` file
 - Keep your bot token secret - anyone with the token can control your bot
+- Consider using webhook mode instead of polling for production deployments

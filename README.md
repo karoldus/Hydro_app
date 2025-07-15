@@ -19,6 +19,8 @@ measurement-app/
 ├── app.py                 # Main Flask application
 ├── requirements.txt       # Python dependencies
 ├── test_script.py        # Test script for sending measurements
+├── test_notification.py  # Test script for Telegram notifications
+├── config.py             # Optional advanced configuration
 ├── README.md             # This file
 ├── TELEGRAM_SETUP.md     # Telegram bot setup guide
 ├── .env.example          # Example environment variables
@@ -89,14 +91,17 @@ Send measurement data in JSON format:
 
 ## Testing
 
-Use the provided `test_script.py` to send sample measurements:
+Use the provided test scripts:
 
 ```bash
-# Normal water level (50mm)
+# Test normal water level (50mm)
 python test_script.py
 
-# Low water level (15mm) - triggers Telegram notification
+# Test low water level (15mm) - triggers Telegram notification
 python test_script.py --low-water
+
+# Test Telegram notifications directly (without sending measurement)
+python test_notification.py
 ```
 
 ## Telegram Notifications

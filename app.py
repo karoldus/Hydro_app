@@ -4,9 +4,14 @@ from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 import json
-import asyncio
-from telegram import Bot
-from telegram.error import TelegramError
+import threading
+import requests
+import logging
+import time
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file if it exists
 try:
@@ -21,14 +26,17 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Store the latest measurement in memory
 latest_measurement = None
+last_notification_time = 0
 
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', 'YOUR_CHAT_ID_HERE')
-WATER_LEVEL_THRESHOLD = 20
+WATER_LEVEL_THRESHOLD = int(os.environ.get('WATER_LEVEL_THRESHOLD', '20'))
+NOTIFICATION_COOLDOWN = int(os.environ.get('NOTIFICATION_COOLDOWN', '300'))  # 5 minutes default
 
-# Initialize Telegram bot
-telegram_bot = Bot(token=TELEGRAM_BOT_TOKEN) if TELEGRAM_BOT_TOKEN != 'YOUR_BOT_TOKEN_HERE' else None
+# Check if Telegram is configured
+telegram_configured = (TELEGRAM_BOT_TOKEN != 'YOUR_BOT_TOKEN_HERE' and 
+                      TELEGRAM_CHAT_ID != 'YOUR_CHAT_ID_HERE')
 
 def save_to_csv(measurement):
     """Save measurement data to CSV file"""
@@ -76,30 +84,50 @@ def save_to_csv(measurement):
         
         writer.writerow(row)
 
-async def send_telegram_notification(water_level, timestamp):
-    """Send Telegram notification for low water level"""
-    if not telegram_bot or TELEGRAM_CHAT_ID == 'YOUR_CHAT_ID_HERE':
-        print("Telegram bot not configured. Skipping notification.")
+def send_telegram_notification_thread(water_level, timestamp):
+    """Send Telegram notification in a separate thread"""
+    try:
+        send_telegram_notification(water_level, timestamp)
+    except Exception as e:
+        logger.error(f"Error in telegram notification thread: {e}")
+
+def send_telegram_notification(water_level, timestamp):
+    """Send Telegram notification for low water level using requests"""
+    if not telegram_configured:
+        logger.info("Telegram bot not configured. Skipping notification.")
         return
     
     try:
         date_time = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Prepare the message
         message = f"⚠️ *Halo! Hydro domaga się wody!*\n\n"
         message += f"Aktualny poziom: *{water_level} mm*\n"
         message += f"Threshold: {WATER_LEVEL_THRESHOLD} mm\n"
         message += f"Czas: {date_time}\n\n"
         message += f"Dolej wody, bo biedne roślinki umrą ☠️!"
         
-        await telegram_bot.send_message(
-            chat_id=TELEGRAM_CHAT_ID,
-            text=message,
-            parse_mode='Markdown'
-        )
-        print(f"Telegram notification sent: Water level {water_level}mm")
-    except TelegramError as e:
-        print(f"Failed to send Telegram notification: {e}")
+        # Telegram API URL
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        
+        # Send the message
+        response = requests.post(url, json={
+            'chat_id': TELEGRAM_CHAT_ID,
+            'text': message,
+            'parse_mode': 'Markdown'
+        }, timeout=10)
+        
+        if response.status_code == 200:
+            logger.info(f"Telegram notification sent successfully: Water level {water_level}mm")
+        else:
+            logger.error(f"Failed to send Telegram notification. Status code: {response.status_code}, Response: {response.text}")
+            
+    except requests.exceptions.Timeout:
+        logger.error("Telegram notification timed out after 10 seconds")
+    except requests.exceptions.ConnectionError:
+        logger.error("Failed to connect to Telegram API")
     except Exception as e:
-        print(f"Error sending Telegram notification: {e}")
+        logger.error(f"Error sending Telegram notification: {e}")
 
 @app.route('/')
 def index():
@@ -109,7 +137,7 @@ def index():
 @app.route('/measurement', methods=['POST'])
 def measurement():
     """Handle measurement POST requests"""
-    global latest_measurement
+    global latest_measurement, last_notification_time
     
     try:
         # Get JSON data
@@ -130,9 +158,23 @@ def measurement():
         
         # Check water level and send notification if needed
         water_level = measurement_data['data']['water_level']
+        current_time = time.time()
+        
         if water_level <= WATER_LEVEL_THRESHOLD:
-            # Run async notification in background
-            asyncio.run(send_telegram_notification(water_level, measurement_data['timestamp']))
+            # Check if enough time has passed since last notification
+            if current_time - last_notification_time >= NOTIFICATION_COOLDOWN:
+                last_notification_time = current_time
+                
+                # Send notification in a separate thread to avoid blocking
+                notification_thread = threading.Thread(
+                    target=send_telegram_notification_thread,
+                    args=(water_level, measurement_data['timestamp'])
+                )
+                notification_thread.daemon = True
+                notification_thread.start()
+            else:
+                remaining_time = NOTIFICATION_COOLDOWN - (current_time - last_notification_time)
+                logger.info(f"Skipping notification - cooldown active. Next notification in {remaining_time:.0f} seconds")
         
         # Emit to all connected clients
         socketio.emit('new_measurement', measurement_data)
@@ -140,6 +182,7 @@ def measurement():
         return jsonify({'status': 'success', 'message': 'Measurement saved'}), 200
         
     except Exception as e:
+        logger.error(f"Error processing measurement: {e}")
         return jsonify({'error': str(e)}), 500
 
 @socketio.on('request_latest')
@@ -161,8 +204,10 @@ if __name__ == '__main__':
     print("Web interface: http://localhost:5000")
     
     # Telegram bot status
-    if telegram_bot:
-        print(f"Telegram notifications: ENABLED (threshold: {WATER_LEVEL_THRESHOLD}mm)")
+    if telegram_configured:
+        print(f"Telegram notifications: ENABLED")
+        print(f"  - Water level threshold: {WATER_LEVEL_THRESHOLD}mm")
+        print(f"  - Notification cooldown: {NOTIFICATION_COOLDOWN} seconds")
     else:
         print("Telegram notifications: DISABLED (configure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)")
     
