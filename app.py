@@ -97,6 +97,8 @@ def send_telegram_notification(water_level, timestamp):
         logger.info("Telegram bot not configured. Skipping notification.")
         return
     
+    global last_notification_time
+    
     try:
         date_time = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
         
@@ -124,10 +126,13 @@ def send_telegram_notification(water_level, timestamp):
             
     except requests.exceptions.Timeout:
         logger.error("Telegram notification timed out after 10 seconds")
+        last_notification_time = 0
     except requests.exceptions.ConnectionError:
         logger.error("Failed to connect to Telegram API")
+        last_notification_time = 0
     except Exception as e:
         logger.error(f"Error sending Telegram notification: {e}")
+        last_notification_time = 0
 
 @app.route('/')
 def index():
